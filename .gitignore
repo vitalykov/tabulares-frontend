@@ -1,0 +1,9 @@
+# build files
+dist
+
+# node modules dependencies
+node_modules
+
+# Cursor files
+.cursor
+AGENTS.md
