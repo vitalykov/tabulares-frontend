@@ -3,6 +3,7 @@ export type GameID = string;
 
 export interface NewGameInput {
   name: string;
+  max_players: number;
   players: PlayerID[];
   board_width: number;
   board_height: number;
@@ -33,6 +34,7 @@ async function handleJson<T>(res: Response): Promise<T> {
 
 export type GameStatus =
   | "Ready to start"
+  | "Waiting for players"
   | "In progress"
   | "Stopped"
   | "Finished";
@@ -76,7 +78,43 @@ export interface HintResponse {
   move: string; // "row col"
 }
 
-export const api = {
+export interface LoginResponse {
+  user_id: string;
+}
+
+export interface RegisterResponse {
+  user_id: string;
+}
+
+export const apiAuth = {
+  async login(username: string, password: string): Promise<LoginResponse> {
+    const res = await fetch(`${BASE_URL}/auth/login/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+    }
+    return handleJson<LoginResponse>(res);
+  },
+
+  async register(username: string, password: string): Promise<RegisterResponse> {
+    const res = await fetch(`${BASE_URL}/auth/register/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+    }
+    return handleJson<RegisterResponse>(res);
+  },
+}
+
+export const apiGames = {
   async createGame(input: NewGameInput): Promise<GameResponse> {
     const res = await fetch(`${BASE_URL}/game/create/`, {
       method: "POST",

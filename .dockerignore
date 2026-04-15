@@ -1,0 +1,26 @@
+# VSCode files
+.vscode
+
+# Cursor files
+.cursor
+AGENTS.md
+
+# Dependencies
+node_modules
+/dist
+/build
+
+# Development files
+.env
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+.gitkeep
+
+# Documentation
+LICENSE
+README.md
+docs/

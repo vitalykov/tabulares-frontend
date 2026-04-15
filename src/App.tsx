@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  api,
+  apiGames,
   GameResponse,
   LoadedGameResponse,
   GameStatus,
@@ -8,8 +8,9 @@ import {
   GameStatusResponse,
 } from "./api";
 import "./index.css";
+import { SignInForm } from "./features/auth/components/sign-in-form";
 
-type View = "start" | "create" | "load" | "game";
+type View = "auth" | "start" | "create" | "load" | "game";
 
 type Cell = PlayerID | null;
 
@@ -56,6 +57,7 @@ const PLAYER_MARKS = ["X", "O", "△", "□", "★", "●", "◆", "▲"];
 const getPlayerMark = (playerIndex: number): string =>
   PLAYER_MARKS[playerIndex] ?? String(playerIndex + 1);
 
+// Deprecated
 const buildLocalStateFromLoaded = (loaded: LoadedGameResponse): LocalGameState => {
   const board = createEmptyBoard(loaded.board_width, loaded.board_height);
 
@@ -142,7 +144,7 @@ const App: React.FC = () => {
 
       for (let i = 0; i < numPlayers; i += 1) {
         if (aiFlags[i]) {
-          players.push(-1);
+          players.push(-i - 1);
         } else if (i === 0) {
           players.push(playerId);
         } else {
@@ -152,13 +154,14 @@ const App: React.FC = () => {
 
       const input = {
         name: "tic-tac-toe",
+        max_players: numPlayers,
         players,
         board_width: boardWidth,
         board_height: boardHeight,
         additional_info: String(winLength),
       };
 
-      const created = await api.createGame(input);
+      const created = await apiGames.createGame(input);
       setGame(created);
       setLocalGame({
         board: createEmptyBoard(created.board_width, created.board_height),
@@ -179,7 +182,7 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const loaded = await api.loadGame(loadGameId.trim());
+      const loaded = await apiGames.loadGame(loadGameId.trim());
       console.error(loaded.moves)
       setGame(loaded);
       let localGame: LocalGameState | null = null;
@@ -216,7 +219,7 @@ const App: React.FC = () => {
     }
     setError(null);
     try {
-      const res = await api.startGame(game.id);
+      const res = await apiGames.startGame(game.id);
       const turnIdx = game.players.indexOf(res.turn);
       setLocalGame({
         ...localGame,
@@ -239,7 +242,7 @@ const App: React.FC = () => {
     }
     setError(null);
     try {
-      await api.stopGame(game.id);
+      await apiGames.stopGame(game.id);
       // After OK response, return to main menu.
       handleResetToStart();
     } catch (e) {
@@ -253,7 +256,7 @@ const App: React.FC = () => {
     }
     setError(null);
     try {
-      await api.cancelGame(game.id);
+      await apiGames.cancelGame(game.id);
       handleResetToStart();
     } catch (e) {
       setError((e as Error).message);
@@ -283,7 +286,7 @@ const App: React.FC = () => {
 
     try {
       const moveString = `${row} ${col}`;
-      const res = await api.makeMove(game.id, {
+      const res = await apiGames.makeMove(game.id, {
         player_id: currentPlayerId,
         move: moveString,
       });
@@ -322,7 +325,7 @@ const App: React.FC = () => {
     }
     try {
       setError(null);
-      const res = await api.undoMove(game.id);
+      const res = await apiGames.undoMove(game.id);
       const lastMove = res.move.split(" ").map(Number);
       const row = lastMove[0];
       const col = lastMove[1];
@@ -347,7 +350,7 @@ const App: React.FC = () => {
     }
     setError(null);
     try {
-      const res = await api.getHint(game.id);
+      const res = await apiGames.getHint(game.id);
       const [rStr, cStr] = res.move.split(" ");
       const row = Number(rStr);
       const col = Number(cStr);
@@ -381,10 +384,15 @@ const App: React.FC = () => {
       {error && <div className="error-banner">{error}</div>}
       {loading && <div className="loading-overlay">Loading...</div>}
 
+      {view === "auth" && (
+        <AuthScreen />
+      )}
+
       {view === "start" && (
         <StartScreen
           onCreate={() => setView("create")}
           onLoad={() => setView("load")}
+          onSignIn={() => setView("auth")}
         />
       )}
 
@@ -438,12 +446,24 @@ const App: React.FC = () => {
   );
 };
 
+// interface AuthScreenProps {
+//   onSignIn: () => void;
+// }
+
+const AuthScreen: React.FC = () => (
+  <div className="screen auth-screen">
+    <h2>Sign in</h2>
+    <SignInForm />
+  </div>
+);
+
 interface StartScreenProps {
   onCreate: () => void;
   onLoad: () => void;
+  onSignIn: () => void;
 }
 
-const StartScreen: React.FC<StartScreenProps> = ({ onCreate, onLoad }) => (
+const StartScreen: React.FC<StartScreenProps> = ({ onCreate, onLoad, onSignIn }) => (
   <div className="screen start-screen">
     <div className="board-animation">
       <div className="board-grid">
@@ -460,6 +480,9 @@ const StartScreen: React.FC<StartScreenProps> = ({ onCreate, onLoad }) => (
       </button>
       <button type="button" className="secondary" onClick={onLoad}>
           Load Game
+      </button>
+      <button type="button" className="secondary" onClick={onSignIn}>
+          Sign in
       </button>
     </div>
   </div>
@@ -796,7 +819,7 @@ export default App;
 
 async function makeAiMove(game: GameResponse, localGame: LocalGameState, setLocalGame: React.Dispatch<React.SetStateAction<LocalGameState | null>>) {
   await new Promise(resolve => setTimeout(resolve, 700));
-  const aiRes = await api.aiMove(game.id);
+  const aiRes = await apiGames.aiMove(game.id);
   if (aiRes) {
     const [rStr, cStr] = aiRes.move.split(" ");
     const row = Number(rStr);

@@ -7,3 +7,7 @@ node_modules
 # Cursor files
 .cursor
 AGENTS.md
+
+# IDE files
+.vscode
+.idea
